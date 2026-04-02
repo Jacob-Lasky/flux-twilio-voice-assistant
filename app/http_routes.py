@@ -236,7 +236,7 @@ async def api_seed(n: int = Query(2, ge=1, le=10)):
     for i in range(n):
         order = {
             "order_number": f"T{datetime.utcnow().strftime('%H%M%S')}{i}",
-            "phone": "+16146205644",
+            "phone": os.getenv("TWILIO_TO_E164", ""),
             "items": [
                 {"flavor": CONFIG["menu"]["drinks"][0], "addons": [CONFIG["menu"]["addons"][0]] if CONFIG["menu"].get("addons") else [], "sweetness": CONFIG["defaults"]["sweetness"], "ice": CONFIG["defaults"]["ice"]}
             ],
