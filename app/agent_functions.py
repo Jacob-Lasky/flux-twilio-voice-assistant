@@ -54,12 +54,15 @@ def _menu_summary():
 def _extract_phone_and_order(text: str):
     return bl.extract_phone_and_order(text)
 
-async def _save_phone_number(phone: str, *, call_sid: str | None = None):
+async def _save_phone_number(phone: str | None = None, *, call_sid: str | None = None):
     from .business_logic import normalize_phone
     s = await sessions.get_or_create(call_sid or "unknown")
-    p = normalize_phone(phone)
-    s.phone = p
-    s.phone_confirmed = False  # <-- minimal change: do NOT auto-confirm
+    if phone:
+        p = normalize_phone(phone)
+        s.phone = p
+    else:
+        p = s.phone  # use pre-filled caller ID
+    s.phone_confirmed = False
     return {"ok": bool(p), "phone": p}
 
 # NEW: explicit confirmation tool (minimal addition)
@@ -187,11 +190,11 @@ FUNCTION_DEFS: list[Dict[str, Any]] = [
     # Phone capture + confirmation (NEW)
     {
         "name": "save_phone_number",
-        "description": "Save the customer's phone number for pickup (not confirmed).",
+        "description": "Save or retrieve the customer's phone number for pickup. If no phone is provided, returns the caller ID number already on file.",
         "parameters": {
             "type": "object",
             "properties": {"phone": {"type": "string"}},
-            "required": ["phone"],
+            "required": [],
         },
     },
     {

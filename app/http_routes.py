@@ -103,6 +103,10 @@ def _index_html():
   <div class="card">
     <h1>{_b["emoji"]} {_b["name"]}</h1>
     <p>{_b["tagline"]}</p>
+    <div style="margin-bottom:20px; padding:20px; border:1px solid {border}; border-radius:14px; background:rgba(19,239,149,0.06); text-align:center;">
+      <div style="color:{card_muted}; font-size:13px; margin-bottom:6px;">Call to order</div>
+      <a href="tel:+18887628114" style="font-size:32px; font-weight:800; color:{accent}; text-decoration:none; letter-spacing:1px;">+1 (888) 762-8114</a>
+    </div>
     <div class="grid">
       <a class="tile" href="/orders">
         <div class="t1">📺 Orders TV</div>
