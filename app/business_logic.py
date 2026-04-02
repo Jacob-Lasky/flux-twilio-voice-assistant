@@ -1,15 +1,19 @@
 # app/business_logic.py
-import re, time, random, asyncio
+import json, re, time, random, asyncio
+from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 
-# --- Menu (no pricing, no sizes - one standard size only) ---
+# --- Load menu from config ---
+_CFG_PATH = Path(__file__).parent / "menu_config.json"
+with open(_CFG_PATH) as _f:
+    CONFIG = json.load(_f)
+
 MENU = {
-    "flavors": ["taro milk tea", "black milk tea"],
-    "toppings": ["boba", "egg pudding", "crystal agar boba", "vanilla cream"],
-    "addons": ["matcha stencil on top"],
+    "flavors": CONFIG["menu"]["drinks"],
+    "addons": CONFIG["menu"].get("addons", []),
 }
-MAX_DRINKS = 5
-MAX_ORDERS_PER_PHONE = 5  # Maximum active drinks total per phone number
+MAX_DRINKS = CONFIG["limits"]["max_drinks_per_order"]
+MAX_ORDERS_PER_PHONE = CONFIG["limits"]["max_active_drinks_per_phone"]
 
 # -----------------------------------------------------------------------------
 # Per-call state
@@ -52,18 +56,13 @@ def _get_store(call_sid: Optional[str]) -> Tuple[asyncio.Lock, List[dict], Dict[
         pending = _CALL_PENDING_ORDERS[call_sid] = {}
     return lock, cart, orders, pending
 
-ADDON_ALIASES = {
-    "matcha stencil on top": {
-        "matcha stencil", "matcha stencil on top", "matcha",
-        "matcha art", "matcha design", "stencil", "matcha stencil top"
-    }
-}
-TOPPING_ALIASES = {
-    "boba": {"boba", "tapioca", "tapioca pearls"},
-    "egg pudding": {"egg pudding", "pudding"},
-    "crystal agar boba": {"crystal agar", "agar", "crystal agar boba"},
-    "vanilla cream": {"vanilla cream", "cream", "vanilla foam", "vanilla cold foam", "foam"},
-}
+# Build alias maps from config
+def _build_alias_map(section: str) -> dict[str, set[str]]:
+    raw = CONFIG.get("aliases", {}).get(section, {})
+    return {canonical: set(aliases) for canonical, aliases in raw.items()}
+
+ADDON_ALIASES = _build_alias_map("addons")
+FLAVOR_ALIASES = _build_alias_map("drinks")
 
 def _match_with_aliases(value_norm: str, canonical_list: list[str], aliases: dict[str, set[str]]):
     if value_norm in canonical_list:
@@ -80,64 +79,45 @@ def _match_with_aliases(value_norm: str, canonical_list: list[str], aliases: dic
     return None
 
 def menu_summary():
+    drinks = ", ".join(d.title() for d in MENU["flavors"])
+    summary = f"We have {drinks}."
+    if MENU["addons"]:
+        summary += f" Add-ons: {', '.join(a.title() for a in MENU['addons'])}."
     return {
-        "summary": (
-            "We have Taro Milk Tea and Black Milk Tea. "
-            "Toppings: boba, egg pudding, crystal agar boba, vanilla cream. "
-            "Optional add-on: matcha stencil on top (requires vanilla cream foam)."
-        ),
+        "summary": summary,
         "flavors": MENU["flavors"],
-        "toppings": MENU["toppings"],
         "addons": MENU["addons"],
     }
 
 # -----------------------------------------------------------------------------
 # Cart ops
 # -----------------------------------------------------------------------------
-async def add_to_cart(flavor: str, toppings=None, sweetness: str | None = None, ice: str | None = None, addons=None, *, call_sid: str | None = None):
+async def add_to_cart(flavor: str, addons=None, sweetness: str | None = None, ice: str | None = None, *, call_sid: str | None = None):
     lock, CART, _, _ = _get_store(call_sid)
     async with lock:
         if len(CART) >= MAX_DRINKS:
             return {"ok": False, "error": f"Max {MAX_DRINKS} drinks per order."}
 
         f = _normalize(flavor)
+        f = _match_with_aliases(f, MENU["flavors"], FLAVOR_ALIASES) or f
         if f not in MENU["flavors"]:
             return {"ok": False, "error": f"'{flavor}' is not on the menu."}
 
-        tops_in = [_normalize(t) for t in _ensure_list(toppings)]
         adds_in = [_normalize(a) for a in _ensure_list(addons)]
-
-        tops_out = []
-        for t in tops_in:
-            if not t:
-                continue
-            m = _match_with_aliases(t, MENU["toppings"], TOPPING_ALIASES)
-            if not m:
-                return {"ok": False, "error": f"Topping '{t}' not available."}
-            tops_out.append(m)
-
         adds_out = []
         for a in adds_in:
             if not a:
                 continue
             m = _match_with_aliases(a, MENU["addons"], ADDON_ALIASES)
             if not m:
-                return {"ok": False, "error": f"Add-on '{a}' not available."}
+                return {"ok": False, "error": f"'{a}' is not available as an add-on."}
             adds_out.append(m)
-
-        if "matcha stencil on top" in adds_out and "vanilla cream" not in tops_out:
-            return {
-                "ok": False,
-                "error": "Matcha stencil is only available with foam. Please add Vanilla Cream topping.",
-                "requires": {"topping": "vanilla cream"},
-            }
 
         item = {
             "flavor": f,
-            "toppings": tops_out,
-            "sweetness": (sweetness or "50%"),
-            "ice": (ice or "regular ice"),
             "addons": adds_out,
+            "sweetness": (sweetness or CONFIG["defaults"]["sweetness"]),
+            "ice": (ice or CONFIG["defaults"]["ice"]),
         }
         CART.append(item)
         return {"ok": True, "cart_count": len(CART), "item": item}
@@ -150,7 +130,7 @@ async def remove_from_cart(index: int, *, call_sid: str | None = None):
         removed = CART.pop(index)
         return {"ok": True, "removed": removed, "cart_count": len(CART)}
 
-async def modify_cart_item(index: int, flavor: str | None = None, toppings=None, sweetness: str | None = None, ice: str | None = None, addons=None, *, call_sid: str | None = None):
+async def modify_cart_item(index: int, flavor: str | None = None, addons=None, sweetness: str | None = None, ice: str | None = None, *, call_sid: str | None = None):
     lock, CART, _, _ = _get_store(call_sid)
     async with lock:
         if not (0 <= index < len(CART)):
@@ -159,21 +139,10 @@ async def modify_cart_item(index: int, flavor: str | None = None, toppings=None,
 
         if flavor:
             f = _normalize(flavor)
+            f = _match_with_aliases(f, MENU["flavors"], FLAVOR_ALIASES) or f
             if f not in MENU["flavors"]:
                 return {"ok": False, "error": f"'{flavor}' is not on the menu."}
             item["flavor"] = f
-
-        if toppings is not None:
-            tops_in = [_normalize(t) for t in _ensure_list(toppings)]
-            tops_out = []
-            for t in tops_in:
-                if not t:
-                    continue
-                m = _match_with_aliases(t, MENU["toppings"], TOPPING_ALIASES)
-                if not m:
-                    return {"ok": False, "error": f"Topping '{t}' not available."}
-                tops_out.append(m)
-            item["toppings"] = tops_out
 
         if addons is not None:
             adds_in = [_normalize(a) for a in _ensure_list(addons)]
@@ -183,16 +152,9 @@ async def modify_cart_item(index: int, flavor: str | None = None, toppings=None,
                     continue
                 m = _match_with_aliases(a, MENU["addons"], ADDON_ALIASES)
                 if not m:
-                    return {"ok": False, "error": f"Add-on '{a}' not available."}
+                    return {"ok": False, "error": f"'{a}' is not available as an add-on."}
                 adds_out.append(m)
             item["addons"] = adds_out
-
-        if "matcha stencil on top" in item.get("addons", []) and "vanilla cream" not in item.get("toppings", []):
-            return {
-                "ok": False,
-                "error": "Matcha stencil is only available with foam. Please add Vanilla Cream topping.",
-                "requires": {"topping": "vanilla cream"},
-            }
 
         if sweetness:
             item["sweetness"] = sweetness

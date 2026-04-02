@@ -7,17 +7,17 @@ from .session import sessions
 from .events import publish  # NEW
 
 # ---------- Tool implementations (per-call) ----------
-async def _add_to_cart(flavor: str, toppings=None, sweetness: str | None = None,
-                       ice: str | None = None, addons=None, *, call_sid: str | None = None):
-    return await bl.add_to_cart(flavor, toppings, sweetness, ice, addons, call_sid=call_sid)
+async def _add_to_cart(flavor: str, addons=None, sweetness: str | None = None,
+                       ice: str | None = None, *, call_sid: str | None = None):
+    return await bl.add_to_cart(flavor, addons, sweetness, ice, call_sid=call_sid)
 
 async def _remove_from_cart(index: int, *, call_sid: str | None = None):
     return await bl.remove_from_cart(index, call_sid=call_sid)
 
-async def _modify_cart_item(index: int, flavor: str | None = None, toppings=None,
-                            sweetness: str | None = None, ice: str | None = None, addons=None,
+async def _modify_cart_item(index: int, flavor: str | None = None, addons=None,
+                            sweetness: str | None = None, ice: str | None = None,
                             *, call_sid: str | None = None):
-    return await bl.modify_cart_item(index, flavor, toppings, sweetness, ice, addons, call_sid=call_sid)
+    return await bl.modify_cart_item(index, flavor, addons, sweetness, ice, call_sid=call_sid)
 
 async def _set_sweetness_ice(index: int | None = None, sweetness: str | None = None,
                              ice: str | None = None, *, call_sid: str | None = None):
@@ -86,7 +86,7 @@ async def _order_is_placed(*, call_sid: str | None = None):
 FUNCTION_DEFS: list[Dict[str, Any]] = [
     {
         "name": "menu_summary",
-        "description": "Give a short human-style menu overview (flavors, toppings, add-ons).",
+        "description": "Give a short human-style menu overview (drinks and add-ons).",
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
 
@@ -98,10 +98,9 @@ FUNCTION_DEFS: list[Dict[str, Any]] = [
             "type": "object",
             "properties": {
                 "flavor": {"type": "string"},
-                "toppings": {"type": "array", "items": {"type": "string"}},
+                "addons": {"type": "array", "items": {"type": "string"}, "description": "Any add-ons: milk choices, syrups, etc."},
                 "sweetness": {"type": "string", "description": "0% | 25% | 50% | 75% | 100%"},
                 "ice": {"type": "string", "description": "no ice | less ice | regular ice | extra ice"},
-                "addons": {"type": "array", "items": {"type": "string"}},
             },
             "required": ["flavor"],
         },
@@ -123,10 +122,9 @@ FUNCTION_DEFS: list[Dict[str, Any]] = [
             "properties": {
                 "index": {"type": "integer", "minimum": 0},
                 "flavor": {"type": "string"},
-                "toppings": {"type": "array", "items": {"type": "string"}},
+                "addons": {"type": "array", "items": {"type": "string"}, "description": "Any add-ons: milk choices, syrups, etc."},
                 "sweetness": {"type": "string"},
                 "ice": {"type": "string"},
-                "addons": {"type": "array", "items": {"type": "string"}},
             },
             "required": ["index"],
         },
