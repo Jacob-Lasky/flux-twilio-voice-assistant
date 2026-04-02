@@ -110,7 +110,7 @@ ngrok http 8000
 
 ### Production Deployment
 
-For production deployment on AWS EC2, see the comprehensive guides in `documentations/`:
+For production deployment on AWS EC2, see the guides in `documentations/` (note: these were written for the original "BobaRista" deployment and still reference that branding, but the setup steps are the same):
 
 - **[Deployment Guide](documentations/doc-04-deployment.md)** - Complete production setup
 - **[AWS EC2 Setup](documentations/doc-02-ec2-setup.md)** - Server configuration
