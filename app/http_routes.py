@@ -44,19 +44,37 @@ def _autorefresh_meta(refresh_seconds: Optional[int]) -> str:
         return ""
     return f'<meta http-equiv="refresh" content="{int(refresh_seconds)}" />'
 
+_THEME_DEFAULTS = {
+    "font_family": "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    "bg_gradient": "linear-gradient(135deg, #050506 0%, #1a1a1f 100%)",
+    "card_bg": "#1a1a1f",
+    "card_text": "#fbfbff",
+    "card_muted": "#949498",
+    "accent": "#13ef95",
+    "accent_hover_shadow": "rgba(19,239,149,0.2)",
+    "border": "#2c2c33",
+    "orders_tv_bg": "#0b0b0c",
+    "orders_tv_card_bg": "#1a1a1f",
+    "orders_tv_border": "#2c2c33",
+    "orders_tv_text": "#fbfbff",
+}
+
+def _theme() -> dict:
+    return {k: CONFIG.get("theme", {}).get(k, v) for k, v in _THEME_DEFAULTS.items()}
+
 # -------------------- Landing page --------------------
 
 def _index_html():
     _b = CONFIG["brand"]
-    _t = CONFIG.get("theme", {})
-    font = _t.get("font_family", "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif")
-    bg = _t.get("bg_gradient", "linear-gradient(135deg, #050506 0%, #1a1a1f 100%)")
-    card_bg = _t.get("card_bg", "#1a1a1f")
-    card_text = _t.get("card_text", "#fbfbff")
-    card_muted = _t.get("card_muted", "#949498")
-    accent = _t.get("accent", "#13ef95")
-    accent_shadow = _t.get("accent_hover_shadow", "rgba(19,239,149,0.2)")
-    border = _t.get("border", "#2c2c33")
+    t = _theme()
+    font = t["font_family"]
+    bg = t["bg_gradient"]
+    card_bg = t["card_bg"]
+    card_text = t["card_text"]
+    card_muted = t["card_muted"]
+    accent = t["accent"]
+    accent_shadow = t["accent_hover_shadow"]
+    border = t["border"]
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -257,13 +275,13 @@ async def orders_events():
 # -------------------- UI Pages (Orders TV + Staff Console) --------------------
 
 def _orders_tv_html(refresh: int) -> str:
-    _t = CONFIG.get("theme", {})
-    font = _t.get("font_family", "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif")
-    tv_bg = _t.get("orders_tv_bg", "#0b0b0c")
-    tv_card = _t.get("orders_tv_card_bg", "#1a1a1f")
-    tv_border = _t.get("orders_tv_border", "#2c2c33")
-    tv_text = _t.get("orders_tv_text", "#fbfbff")
-    accent = _t.get("accent", "#13ef95")
+    t = _theme()
+    font = t["font_family"]
+    tv_bg = t["orders_tv_bg"]
+    tv_card = t["orders_tv_card_bg"]
+    tv_border = t["orders_tv_border"]
+    tv_text = t["orders_tv_text"]
+    accent = t["accent"]
     return f"""<!doctype html>
 <html>
 <head>
@@ -349,9 +367,9 @@ def _orders_tv_html(refresh: int) -> str:
 </html>"""
 
 def _staff_html(refresh: int) -> str:
-    _t = CONFIG.get("theme", {})
-    accent = _t.get("accent", "#13ef95")
-    font = _t.get("font_family", "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif")
+    t = _theme()
+    accent = t["accent"]
+    font = t["font_family"]
     return f"""<!doctype html>
 <html>
 <head>
