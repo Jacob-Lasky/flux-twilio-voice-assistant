@@ -315,7 +315,8 @@ async def twilio_ws(ws: WebSocket):
                 s.order = {}
                 s.order_number = None
                 s.pending_item = None
-                s.phone = None
+                caller_phone = params.get("from", "")
+                s.phone = bl.normalize_phone(caller_phone) if caller_phone else None
                 s.phone_confirmed = False
                 s.received_sms_sent = False
                 s.dg_request_id = None

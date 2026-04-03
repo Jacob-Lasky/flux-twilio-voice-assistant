@@ -2,12 +2,12 @@
 set -euo pipefail
 
 # --- Stop helper for Podman ---
-# - Stops and removes the 'boba-voice' container
+# - Stops and removes the 'dg-drinks' container
 # - Optionally stops the Podman VM
 
-echo "🛑 Stopping 'boba-voice' container..."
-podman stop boba-voice >/dev/null 2>&1 || true
-podman rm boba-voice   >/dev/null 2>&1 || true
+echo "🛑 Stopping 'dg-drinks' container..."
+podman stop dg-drinks >/dev/null 2>&1 || true
+podman rm dg-drinks   >/dev/null 2>&1 || true
 
 echo "✅ Container stopped and removed."
 

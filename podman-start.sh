@@ -3,43 +3,43 @@ set -euo pipefail
 
 # --- Local dev helper for Podman + ngrok ---
 # - Ensures Podman VM is running (macOS/Windows)
-# - Removes any existing 'boba-voice' container
+# - Removes any existing 'dg-drinks' container
 # - Builds the image from Containerfile
 # - Runs the container on port 8000 with your .env
 
 echo "▶️ Ensuring Podman machine is running..."
 podman machine start >/dev/null 2>&1 || true
 
-if podman ps -a --format '{{.Names}}' | grep -q '^boba-voice$'; then
-  echo "🗑️  Removing old 'boba-voice' container..."
-  podman stop boba-voice >/dev/null 2>&1 || true
-  podman rm boba-voice   >/dev/null 2>&1 || true
+if podman ps -a --format '{{.Names}}' | grep -q '^dg-drinks$'; then
+  echo "🗑️  Removing old 'dg-drinks' container..."
+  podman stop dg-drinks >/dev/null 2>&1 || true
+  podman rm dg-drinks   >/dev/null 2>&1 || true
 fi
 
-echo "🧱 Building image boba-voice:local ..."
-podman build -t boba-voice:local -f Containerfile .
+echo "🧱 Building image dg-drinks:local ..."
+podman build -t dg-drinks:local -f Containerfile .
 
 echo "🚀 Starting container on :8000 ..."
-podman run -d --name boba-voice \
+podman run -d --name dg-drinks \
   --restart unless-stopped \
   -p 8000:8000 \
   --env-file .env \
-  boba-voice:local
+  dg-drinks:local
 
 echo ""
 echo "✅ Up! Dashboards:"
 echo "   • Orders:  http://localhost:8000/orders"
-echo "   • Barista: http://localhost:8000/barista"
+echo "   • Staff:   http://localhost:8000/staff"
 echo ""
 echo "📞 Expose to Twilio with ngrok:"
 echo "   ngrok http 8000"
 echo "   (Then set NGROK_HOST in .env and Twilio Voice webhook to https://<NGROK_HOST>/voice)"
 echo ""
 echo "🔎 Logs (follow):"
-echo "   podman logs -f boba-voice"
+echo "   podman logs -f dg-drinks"
 echo ""
 echo "🛑 To stop and remove container manually:"
-echo "   podman stop boba-voice && podman rm boba-voice"
+echo "   podman stop dg-drinks && podman rm dg-drinks"
 echo ""
 echo "🛑 Or simply run the helper script:"
 echo "   ./podman-stop.sh"
